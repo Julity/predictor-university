@@ -43,7 +43,7 @@ except Exception as e:
     sys.modules['numpy'].__dict__.update(FakeNumPy().__dict__)
     
     import numpy as np
-    print(f"⚠️ Используется эмулированный NumPy: {np.__version__}")
+
 
 # 2. ПРОВЕРКА
 print(f"NumPy check: {hasattr(np, '__version__')}")
