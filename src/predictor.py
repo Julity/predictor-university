@@ -1,14 +1,15 @@
 # src/predictor.py
-import pandas as pd
 import numpy as np
-import os
-from joblib import load
-import itertools
+import pandas as pd
+import pickle
+import joblib
 import torch
 import torch.nn as nn
 import logging
 from config import feature_order, feature_weights, realistic_ranges, weak_features
+import streamlit as st
 
+print(f"predictor.py: NumPy {np.__version__}")
 # Упрощенная нейросеть (такая же как в train_model.py)
 class SimpleRankPredictor(nn.Module):
     def __init__(self, input_size):
@@ -36,14 +37,26 @@ class RAPredictor:
             "models",                           # Локальная разработка
             "app/models",                       # Streamlit Cloud структура 1
             "../models",                        # Streamlit Cloud структура 2
-            os.path.join(os.path.dirname(__file__), "..", "models")  # Абсолютный путь
+            os.path.join(os.path.dirname(__file__), "..", "models"),  # Абсолютный
+            "/app/models",                         # Docker/Render
+            "/app/app/models",                     # Альтернатива Docker
+            os.path.join(os.getcwd(), "models"),   # Текущая рабочая директория
+            os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models")  # Двойной родитель
         ]
         
         model_path = None
         for path in possible_paths:
-            if os.path.exists(path):
-                model_path = path
-                break
+            try:
+                if os.path.exists(path):
+                    # Проверяем, есть ли хотя бы один файл модели
+                    model_files = os.listdir(path) if os.path.isdir(path) else []
+                    if any(f.endswith(('.pkl', '.pth', '.joblib')) for f in model_files):
+                        model_path = path
+                        st.info(f"✓ Найдена папка с моделями: {path}")
+                        st.info(f"   Файлы: {model_files[:5]}")  # Показываем первые 5 файлов
+                        break
+            except Exception as e:
+                logging.warning(f"Ошибка проверки пути {path}: {e}")
         
         if model_path is None:
             # Если ничего не нашли, покажем что есть
@@ -51,9 +64,35 @@ class RAPredictor:
             st.error(f"Папка models не найдена! Текущая директория: {current_dir}")
             st.error(f"Содержимое директории: {os.listdir('.')}")
             raise FileNotFoundError("Папка models не найдена ни по одному из путей")
-        
+            # Пробуем найти любые файлы
+            all_files = []
+            for root, dirs, files in os.walk('.'):
+                for file in files:
+                    if file.endswith(('.pkl', '.pth')):
+                        all_files.append(os.path.join(root, file))
+            
+            if all_files:
+                st.error(f"Найденные файлы моделей: {all_files}")
+            else:
+                st.error("Файлы моделей не найдены")
+            
+            raise FileNotFoundError("Папка models не найдена")
+        self.model_path = model_path   
         logging.info(f"Используется путь к моделям: {model_path}")
+          # ПРОВЕРКА КОНКРЕТНЫХ ФАЙЛОВ
+        required_files = ['xgb_model.pkl', 'scaler.pkl', 'model_info.pkl']
+        missing_files = []
         
+        for file in required_files:
+            full_path = os.path.join(model_path, file)
+            if not os.path.exists(full_path):
+                missing_files.append(file)
+                st.warning(f"⚠️ Не найден файл: {file}")
+        
+        if missing_files:
+            st.error(f"Отсутствуют файлы: {missing_files}")
+            available = os.listdir(model_path)
+            st.error(f"Доступные файлы: {available}")
         # Дальше ваш существующий код...
         model_info_path = f"{model_path}/model_info.pkl"
         if not os.path.exists(model_info_path):
@@ -64,13 +103,14 @@ class RAPredictor:
         if not os.path.exists(model_info_path):
             raise FileNotFoundError("Модели не найдены. Сначала обучите модели.")
         
-        self.model_info = load(model_info_path)
+        with open(model_info_path, 'rb') as f:
+            self.model_info = pickle.load(f)
         
         # Определение типа модели для использования
         if model_type == 'best':
             best_model_type_path = f"{model_path}/best_model_type.pkl"
             if os.path.exists(best_model_type_path):
-                self.model_type = load(best_model_type_path)
+                self.model_type = pickle.load(best_model_type_path)
             else:
                 self.model_type = 'xgboost'  # По умолчанию
         else:
@@ -80,7 +120,9 @@ class RAPredictor:
         scaler_path = f"{model_path}/scaler.pkl"
         if not os.path.exists(scaler_path):
             raise FileNotFoundError("Scaler не найден")
-        self.scaler = load(scaler_path)
+        with open(scaler_path, 'rb') as f:
+            self.scaler = pickle.load(f)
+
         
         # Загрузка модели
         if self.model_type == 'neural_network':
@@ -99,7 +141,8 @@ class RAPredictor:
             xgb_model_path = f"{model_path}/xgb_model.pkl"
             if not os.path.exists(xgb_model_path):
                 raise FileNotFoundError("XGBoost модель не найдена")
-            self.model = load(xgb_model_path)
+            with open(xgb_model_path, 'rb') as f:
+                self.model = pickle.load(f)
         
         self.feature_order = self.model_info['feature_order']
         current_features = feature_order
