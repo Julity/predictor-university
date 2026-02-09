@@ -1,54 +1,48 @@
-# app/main.py
+# app/main.py - ПЕРВЫЕ СТРОКИ
 import sys
 import os
 
-# 1. РАННИЙ ПАТЧ - ДО ЛЮБЫХ ИМПОРТОВ!
+# 1. ИМПОРТ ПАТЧА ПЕРВЫМ ДЕЛОМ - ДО ВСЕХ ОСТАЛЬНЫХ ИМПОРТОВ!
 try:
-    # Пытаемся загрузить наш патч
-    from numpy_patch import stub
-    sys.modules['numpy._core'] = stub
-    sys.modules['numpy.core'] = stub
-    print("✅ numpy_patch загружен")
-except ImportError:
-    # Если файла нет, создаем простую заглушку
+    import numpy_patch
+    print("✅ numpy_patch импортирован")
+except Exception as e:
+    print(f"⚠️ numpy_patch ошибка: {e}")
+    # Создаем минимальную заглушку
     class SimpleStub:
-        def __init__(self):
-            self.multiarray = self
-            self._multiarray_umath = self
-        
-        def __getattr__(self, name):
-            return SimpleStub()
-        
-        def __call__(self, *args, **kwargs):
-            return SimpleStub()
-        
-        def __iter__(self):
-            return iter([])
+        def __getattr__(self, name): return SimpleStub()
+        def __call__(self, *args, **kwargs): return SimpleStub()
+        def __iter__(self): return iter([])
     
     stub = SimpleStub()
     sys.modules['numpy._core'] = stub
     sys.modules['numpy.core'] = stub
-    print("✅ Простая заглушка создана")
 
-# 2. ТЕПЕРЬ импортируем numpy
-import numpy as np
-print(f"✅ NumPy импортирован: {np.__version__}")
-
-# 3. Проверяем
+# 2. Теперь БЕЗОПАСНО импортируем numpy
 try:
-    from numpy import core
-    print(f"✅ numpy.core: {core}")
+    import numpy as np
+    print(f"✅ NumPy загружен: {np.__version__}")
 except Exception as e:
-    print(f"⚠️ numpy.core ошибка: {e}")
+    print(f"❌ Ошибка загрузки NumPy: {e}")
+    # Создаем fake numpy если не загрузился
+    class FakeNumpy:
+        __version__ = "1.24.3 (stub)"
+        def __getattr__(self, name):
+            return FakeNumpy()
+    np = FakeNumpy()
 
-# 4. Остальные импорты
+# 3. Остальные импорты
 import streamlit as st
 import pandas as pd
 import pickle
+import logging
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 st.set_page_config(page_title="🎓 RANK FORECAST", layout="wide")
 st.title("🎓 RANK FORECAST - Универсальная модель")
+
+# 4. Проверка
+st.write(f"NumPy версия: {np.__version__}")
 
 # Данные для ДГТУ и ДонНТУ
 DGSU_DATA = {

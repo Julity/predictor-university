@@ -1,17 +1,15 @@
 # src/predictor.py
-import sys
-import os
-
 import numpy as np
 import pandas as pd
 import pickle
 import joblib
-import itertools
 import torch
 import torch.nn as nn
 import logging
 from config import feature_order, feature_weights, realistic_ranges, weak_features
 import streamlit as st
+
+print(f"predictor.py: NumPy {np.__version__}")
 # Упрощенная нейросеть (такая же как в train_model.py)
 class SimpleRankPredictor(nn.Module):
     def __init__(self, input_size):
