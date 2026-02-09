@@ -1,40 +1,50 @@
 # src/predictor.py
 import sys
+import os
 
-# Патч для совместимости с numpy 2.0
+# 1. ПАТЧ ДО ВСЕХ ИМПОРТОВ
+try:
+    # Пытаемся импортировать наш патч
+    import numpy_fix
+    print("✅ numpy_fix импортирован")
+except ImportError:
+    # Если файла нет, применяем патч напрямую
+    class NumpyCoreStub:
+        def __init__(self):
+            self.multiarray = self
+            self._multiarray_umath = self
+        
+        def __getattr__(self, name):
+            return type('Empty', (), {})()
+    
+    stub = NumpyCoreStub()
+    sys.modules['numpy._core'] = stub
+    sys.modules['numpy.core'] = stub
+    print("✅ Прямой патч numpy._core применён")
+
+# 2. ТЕПЕРЬ импортируем numpy
 try:
     import numpy as np
-    # Проверяем версию
-    numpy_version = tuple(map(int, np.__version__.split('.')[:2]))
+    print(f"✅ NumPy загружен: {np.__version__}")
     
-    if numpy_version >= (2, 0):
-        # Создаем заглушку для numpy._core
-        class DummyCore:
-            def __init__(self):
-                self.multiarray = type('obj', (object,), {})()
-                self._multiarray_umath = type('obj', (object,), {})()
-                self._dtype_ctypes = type('obj', (object,), {})()
-            
-            def __getattr__(self, name):
-                return type('obj', (object,), {})()
+    # Дополнительная проверка
+    try:
+        # Пробуем получить доступ к _core
+        import numpy._core
+        print("✅ numpy._core доступен (заглушка)")
+    except ImportError:
+        print("⚠️ numpy._core недоступен, но есть заглушка")
         
-        # Добавляем заглушку в sys.modules
-        sys.modules['numpy._core'] = DummyCore()
-        sys.modules['numpy.core'] = DummyCore()
-        
-        print(f"⚠️ NumPy {np.__version__} обнаружен, применяем патч совместимости")
-        
-except ImportError:
-    pass
+except Exception as e:
+    print(f"❌ Ошибка загрузки NumPy: {e}")
+
+# 3. ОСТАЛЬНЫЕ ИМПОРТЫ
 import pandas as pd
-import numpy as np
-import os
-import pickle  # ИМПОРТИРУЕМ ВЕСЬ МОДУЛЬ!
+import pickle
 import joblib
 import itertools
 import torch
 import torch.nn as nn
-
 import logging
 from config import feature_order, feature_weights, realistic_ranges, weak_features
 import streamlit as st

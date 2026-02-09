@@ -1,58 +1,43 @@
 # app/main.py
-import streamlit as st
-import pandas as pd
 import sys
 import os
-import io
-import warnings
-#sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
 
-import logging
+# 1. ПРИМЕНЯЕМ ПАТЧ САМЫМ ПЕРВЫМ
+# Создаём заглушку для numpy._core ДО любого импорта
+class EarlyNumpyFix:
+    def __init__(self):
+        self.multiarray = self
+        self._multiarray_umath = self
+        self._dtype_ctypes = self
+    
+    def __getattr__(self, name):
+        # Возвращаем пустой объект
+        return type('Empty', (), {'__getattr__': lambda self, name: None})()
 
+# Регистрируем заглушку
+stub = EarlyNumpyFix()
+sys.modules['numpy._core'] = stub
+sys.modules['numpy.core'] = stub
+
+print("🚀 Ранний патч numpy._core применён")
+
+# 2. Теперь безопасно импортируем всё остальное
+import streamlit as st
+import numpy as np
+import pandas as pd
+import pickle
+
+st.title("RAEX University Predictor - ДИАГНОСТИКА")
+
+# Проверяем версию numpy
+st.write(f"✅ NumPy версия: {np.__version__}")
+
+# Проверяем доступность _core
 try:
-    import numpy as np
-    print(f"NumPy version: {np.__version__}")
+    import numpy._core
+    st.success("✅ numpy._core доступен (через заглушку)")
 except ImportError as e:
-    print(f"NumPy import error: {e}")
-    sys.exit(1)
-
-# Добавляем корневую директорию в путь
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-# Отключаем предупреждения
-warnings.filterwarnings('ignore')
-
-try:
-    # Пытаемся определить, где мы запущены
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    
-    # Вариант 1: Мы в папке app/ (Streamlit Cloud)
-    if os.path.basename(current_dir) == 'app':
-        src_path = os.path.join(current_dir, '..', 'src')
-        models_path = os.path.join(current_dir, '..', 'models')
-    # Вариант 2: Мы в корне проекта (локальная разработка)  
-    else:
-        src_path = os.path.join(current_dir, 'src')
-        models_path = os.path.join(current_dir, 'models')
-    
-    # Добавляем пути в систему
-    sys.path.insert(0, os.path.abspath(src_path))
-    
-    # Проверяем существование путей
-    if not os.path.exists(models_path):
-        logging.warning(f"Папка models не найдена: {models_path}")
-    
-except Exception as e:
-    logging.error(f"Ошибка настройки путей: {e}")
-
-# Теперь импортируем наши модули
-try:
-    from config import feature_order, russian_name
-    from predictor import RAPredictor
-except ImportError as e:
-    logging.error(f"Ошибка импорта: {e}")
-    st.error(f"Ошибка загрузки модулей: {e}")
-
+    st.error(f"❌ numpy._core ошибка: {e}")
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 st.set_page_config(page_title="🎓 RANK FORECAST", layout="wide")
 st.title("🎓 RANK FORECAST - Универсальная модель")
