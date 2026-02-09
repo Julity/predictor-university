@@ -4,10 +4,24 @@ import pandas as pd
 import sys
 import os
 import io
-
+import warnings
 #sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
 
 import logging
+
+try:
+    import numpy as np
+    print(f"NumPy version: {np.__version__}")
+except ImportError as e:
+    print(f"NumPy import error: {e}")
+    sys.exit(1)
+
+# Добавляем корневую директорию в путь
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Отключаем предупреждения
+warnings.filterwarnings('ignore')
+
 try:
     # Пытаемся определить, где мы запущены
     current_dir = os.path.dirname(os.path.abspath(__file__))

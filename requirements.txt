@@ -1,9 +1,9 @@
-torch==2.0.1
-
+# ВАЖНО: конкретные версии для совместимости
+numpy==1.24.3          # КРИТИЧЕСКИ ВАЖНО
 streamlit==1.51.0
-pandas==2.1.4
-numpy==1.24.3
-scikit-learn==1.3.2
+pandas==2.1.4          # совместим с numpy 1.24.3
+scikit-learn==1.3.2    # тоже совместим
 xgboost==1.7.6
+torch==2.0.1
 plotly==6.4.0
 joblib==1.3.2
