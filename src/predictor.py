@@ -1,4 +1,31 @@
 # src/predictor.py
+import sys
+
+# Патч для совместимости с numpy 2.0
+try:
+    import numpy as np
+    # Проверяем версию
+    numpy_version = tuple(map(int, np.__version__.split('.')[:2]))
+    
+    if numpy_version >= (2, 0):
+        # Создаем заглушку для numpy._core
+        class DummyCore:
+            def __init__(self):
+                self.multiarray = type('obj', (object,), {})()
+                self._multiarray_umath = type('obj', (object,), {})()
+                self._dtype_ctypes = type('obj', (object,), {})()
+            
+            def __getattr__(self, name):
+                return type('obj', (object,), {})()
+        
+        # Добавляем заглушку в sys.modules
+        sys.modules['numpy._core'] = DummyCore()
+        sys.modules['numpy.core'] = DummyCore()
+        
+        print(f"⚠️ NumPy {np.__version__} обнаружен, применяем патч совместимости")
+        
+except ImportError:
+    pass
 import pandas as pd
 import numpy as np
 import os
@@ -7,7 +34,7 @@ import joblib
 import itertools
 import torch
 import torch.nn as nn
-import sys
+
 import logging
 from config import feature_order, feature_weights, realistic_ranges, weak_features
 import streamlit as st
