@@ -2,7 +2,8 @@
 import pandas as pd
 import numpy as np
 import os
-from joblib import load
+import pickle  # ИМПОРТИРУЕМ ВЕСЬ МОДУЛЬ!
+import joblib
 import itertools
 import torch
 import torch.nn as nn
@@ -10,7 +11,6 @@ import sys
 import logging
 from config import feature_order, feature_weights, realistic_ranges, weak_features
 import streamlit as st
-from pickle import load
 # Упрощенная нейросеть (такая же как в train_model.py)
 class SimpleRankPredictor(nn.Module):
     def __init__(self, input_size):
@@ -104,7 +104,8 @@ class RAPredictor:
         if not os.path.exists(model_info_path):
             raise FileNotFoundError("Модели не найдены. Сначала обучите модели.")
         
-        self.model_info = pickle.load(model_info_path)
+        with open(model_info_path, 'rb') as f:
+            self.model_info = pickle.load(f)
         
         # Определение типа модели для использования
         if model_type == 'best':
@@ -120,7 +121,9 @@ class RAPredictor:
         scaler_path = f"{model_path}/scaler.pkl"
         if not os.path.exists(scaler_path):
             raise FileNotFoundError("Scaler не найден")
-        self.scaler = pickle.load(scaler_path)
+        with open(scaler_path, 'rb') as f:
+            self.scaler = pickle.load(f)
+
         
         # Загрузка модели
         if self.model_type == 'neural_network':
@@ -131,7 +134,7 @@ class RAPredictor:
             else:
                 self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
                 self.model = SimpleRankPredictor(input_size=len(feature_order))
-                self.model.load_state_dict(torch.pickle.load(nn_model_path, map_location=self.device))
+                self.model.load_state_dict(torch.load(nn_model_path, map_location=self.device))
                 self.model.to(self.device)
                 self.model.eval()
         
@@ -139,7 +142,8 @@ class RAPredictor:
             xgb_model_path = f"{model_path}/xgb_model.pkl"
             if not os.path.exists(xgb_model_path):
                 raise FileNotFoundError("XGBoost модель не найдена")
-            self.model = pickle.load(xgb_model_path)
+            with open(xgb_model_path, 'rb') as f:
+                self.model = pickle.load(f)
         
         self.feature_order = self.model_info['feature_order']
         current_features = feature_order
