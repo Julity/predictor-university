@@ -1,54 +1,40 @@
-# app/main.py 
+# app/main.py - ИСПРАВЛЕННАЯ ВЕРСИЯ
 import sys
 import os
 
-# 0. ПАТЧ - САМАЯ ПЕРВАЯ СТРОКА ПОСЛЕ ИМПОРТОВ
+# 0. ПАТЧ ТОЛЬКО numpy._core
 try:
     import early_fix
     print("✅ early_fix загружен")
 except Exception as e:
     print(f"⚠️ early_fix ошибка: {e}")
-    # Экстренный патч
-    class EmergencyStub:
-        def __getattr__(self, name): return EmergencyStub()
-        def __call__(self, *args, **kwargs): return EmergencyStub()
+    # Минимальный патч только для _core
+    class SimpleCoreStub:
+        def __getattr__(self, name): return SimpleCoreStub()
+        def __call__(self, *args, **kwargs): return SimpleCoreStub()
         def __iter__(self): return iter([])
-        def __getitem__(self, key): return EmergencyStub()
-        def __setitem__(self, key, value): pass
-        def __len__(self): return 0
+        def __getitem__(self, key): return SimpleCoreStub()
     
-    stub = EmergencyStub()
+    stub = SimpleCoreStub()
     sys.modules['numpy._core'] = stub
-    sys.modules['numpy.core'] = stub
+    # НЕ трогаем numpy.core!
 
-# 1. БЕЗОПАСНЫЙ ИМПОРТ NUMPY
+# 1. ИМПОРТИРУЕМ NUMPY (теперь он должен работать)
+import numpy as np
+print(f"✅ NumPy загружен: {np.__version__}")
+
+# 2. ПРОВЕРЯЕМ, ЧТО ВСЁ РАБОТАЕТ
+print(f"NumPy имеет __version__: {hasattr(np, '__version__')}")
+print(f"np.array существует: {hasattr(np, 'array')}")
+
+# 3. ПРОВЕРЯЕМ _core (должна быть заглушка)
 try:
-    import numpy as np
-    print(f"✅ NumPy успешно загружен: {np.__version__}")
+    import numpy._core
+    print(f"✅ numpy._core доступен (заглушка)")
 except Exception as e:
-    print(f"❌ КРИТИЧЕСКАЯ ОШИБКА загрузки NumPy: {e}")
-    # Создаем заглушку numpy
-    class FakeNumPy:
-        __version__ = "1.24.3 (emulated)"
-        def __getattr__(self, name):
-            class FakeArray:
-                def __getattr__(self, n): return FakeArray()
-                def __call__(self, *args, **kwargs): return FakeArray()
-                def __getitem__(self, idx): return FakeArray()
-            return FakeArray()
-    
-    # Монтируем заглушку
-    import types
-    sys.modules['numpy'] = types.ModuleType('numpy')
-    sys.modules['numpy'].__dict__.update(FakeNumPy().__dict__)
-    
-    import numpy as np
+    print(f"⚠️ numpy._core: {e}")
 
-
-# 2. ПРОВЕРКА
-print(f"NumPy check: {hasattr(np, '__version__')}")
-
-# 3. ОСТАЛЬНЫЕ ИМПОРТЫ
+# 4. ОСТАЛЬНЫЕ ИМПОРТЫ
 import streamlit as st
 import pandas as pd
 import pickle
@@ -56,10 +42,11 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 st.set_page_config(page_title="🎓 RANK FORECAST", layout="wide")
-st.title("🎓 RANK FORECAST")
 
-# Показываем статус
+# 5. ПРОСТОЙ ИНТЕРФЕЙС ДО ЗАГРУЗКИ МОДЕЛЕЙ
+st.title("🎓 RANK FORECAST - Универсальная модель")
 st.write(f"**NumPy версия:** {np.__version__}")
+st.write(f"**Pandas версия:** {pd.__version__}")
 
 # Данные для ДГТУ и ДонНТУ
 DGSU_DATA = {
