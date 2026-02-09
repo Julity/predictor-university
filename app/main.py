@@ -2,42 +2,50 @@
 import sys
 import os
 
-# 1. ПРИМЕНЯЕМ ПАТЧ САМЫМ ПЕРВЫМ
-# Создаём заглушку для numpy._core ДО любого импорта
-class EarlyNumpyFix:
-    def __init__(self):
-        self.multiarray = self
-        self._multiarray_umath = self
-        self._dtype_ctypes = self
+# 1. РАННИЙ ПАТЧ - ДО ЛЮБЫХ ИМПОРТОВ!
+try:
+    # Пытаемся загрузить наш патч
+    from numpy_patch import stub
+    sys.modules['numpy._core'] = stub
+    sys.modules['numpy.core'] = stub
+    print("✅ numpy_patch загружен")
+except ImportError:
+    # Если файла нет, создаем простую заглушку
+    class SimpleStub:
+        def __init__(self):
+            self.multiarray = self
+            self._multiarray_umath = self
+        
+        def __getattr__(self, name):
+            return SimpleStub()
+        
+        def __call__(self, *args, **kwargs):
+            return SimpleStub()
+        
+        def __iter__(self):
+            return iter([])
     
-    def __getattr__(self, name):
-        # Возвращаем пустой объект
-        return type('Empty', (), {'__getattr__': lambda self, name: None})()
+    stub = SimpleStub()
+    sys.modules['numpy._core'] = stub
+    sys.modules['numpy.core'] = stub
+    print("✅ Простая заглушка создана")
 
-# Регистрируем заглушку
-stub = EarlyNumpyFix()
-sys.modules['numpy._core'] = stub
-sys.modules['numpy.core'] = stub
-
-print("🚀 Ранний патч numpy._core применён")
-
-# 2. Теперь безопасно импортируем всё остальное
-import streamlit as st
+# 2. ТЕПЕРЬ импортируем numpy
 import numpy as np
+print(f"✅ NumPy импортирован: {np.__version__}")
+
+# 3. Проверяем
+try:
+    from numpy import core
+    print(f"✅ numpy.core: {core}")
+except Exception as e:
+    print(f"⚠️ numpy.core ошибка: {e}")
+
+# 4. Остальные импорты
+import streamlit as st
 import pandas as pd
 import pickle
 
-st.title("RAEX University Predictor - ДИАГНОСТИКА")
-
-# Проверяем версию numpy
-st.write(f"✅ NumPy версия: {np.__version__}")
-
-# Проверяем доступность _core
-try:
-    import numpy._core
-    st.success("✅ numpy._core доступен (через заглушку)")
-except ImportError as e:
-    st.error(f"❌ numpy._core ошибка: {e}")
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 st.set_page_config(page_title="🎓 RANK FORECAST", layout="wide")
 st.title("🎓 RANK FORECAST - Универсальная модель")

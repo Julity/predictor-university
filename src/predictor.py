@@ -2,43 +2,7 @@
 import sys
 import os
 
-# 1. ПАТЧ ДО ВСЕХ ИМПОРТОВ
-try:
-    # Пытаемся импортировать наш патч
-    import numpy_fix
-    print("✅ numpy_fix импортирован")
-except ImportError:
-    # Если файла нет, применяем патч напрямую
-    class NumpyCoreStub:
-        def __init__(self):
-            self.multiarray = self
-            self._multiarray_umath = self
-        
-        def __getattr__(self, name):
-            return type('Empty', (), {})()
-    
-    stub = NumpyCoreStub()
-    sys.modules['numpy._core'] = stub
-    sys.modules['numpy.core'] = stub
-    print("✅ Прямой патч numpy._core применён")
-
-# 2. ТЕПЕРЬ импортируем numpy
-try:
-    import numpy as np
-    print(f"✅ NumPy загружен: {np.__version__}")
-    
-    # Дополнительная проверка
-    try:
-        # Пробуем получить доступ к _core
-        import numpy._core
-        print("✅ numpy._core доступен (заглушка)")
-    except ImportError:
-        print("⚠️ numpy._core недоступен, но есть заглушка")
-        
-except Exception as e:
-    print(f"❌ Ошибка загрузки NumPy: {e}")
-
-# 3. ОСТАЛЬНЫЕ ИМПОРТЫ
+import numpy as np
 import pandas as pd
 import pickle
 import joblib
