@@ -1,9 +1,11 @@
-# МИНИМАЛЬНЫЙ РАБОЧИЙ НАБОР
-streamlit==1.36.0
-pandas==2.0.3
+
+torch==2.0.1
+--index-url https://download.pytorch.org/whl/cpu
+
+streamlit==1.51.0
+pandas==2.1.4
 numpy==1.24.3
-scikit-learn==1.3.0
-xgboost==1.7.5
-torch==2.0.0
-plotly==5.17.0
-joblib==1.3.1
+scikit-learn==1.3.2
+xgboost==1.7.6
+plotly==6.4.0
+joblib==1.3.2
