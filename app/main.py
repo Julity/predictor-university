@@ -1,68 +1,46 @@
-# app/main.py - ИСПРАВЛЕННАЯ ВЕРСИЯ
-import sys
-import os
-
-# 0. ПАТЧ ТОЛЬКО numpy._core
-try:
-    import early_fix
-    print("✅ early_fix загружен")
-except Exception as e:
-    print(f"⚠️ early_fix ошибка: {e}")
-    # Минимальный патч только для _core
-    class SimpleCoreStub:
-        def __getattr__(self, name): return SimpleCoreStub()
-        def __call__(self, *args, **kwargs): return SimpleCoreStub()
-        def __iter__(self): return iter([])
-        def __getitem__(self, key): return SimpleCoreStub()
-    
-    stub = SimpleCoreStub()
-    sys.modules['numpy._core'] = stub
-    # НЕ трогаем numpy.core!
-
-# 1. ИМПОРТИРУЕМ NUMPY (теперь он должен работать)
-import numpy as np
-print(f"✅ NumPy загружен: {np.__version__}")
-
-# 2. ПРОВЕРЯЕМ, ЧТО ВСЁ РАБОТАЕТ
-
-
-# 3. ПРОВЕРЯЕМ _core (должна быть заглушка)
-try:
-    import numpy._core
-    print(f"✅ numpy._core доступен (заглушка)")
-except Exception as e:
-    print(f"⚠️ numpy._core: {e}")
-
-# 4. ОСТАЛЬНЫЕ ИМПОРТЫ
+# app/main.py
 import streamlit as st
 import pandas as pd
-import pickle
+import sys
+import os
+import io
+
+#sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src")))
+
 import logging
-
-
-
-
 try:
-    # Импортируем RAPredictor из вашего файла
-    from src.predictor import RAPredictor
-    print("✅ RAPredictor импортирован")
+    # Пытаемся определить, где мы запущены
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    # Вариант 1: Мы в папке app/ (Streamlit Cloud)
+    if os.path.basename(current_dir) == 'app':
+        src_path = os.path.join(current_dir, '..', 'src')
+        models_path = os.path.join(current_dir, '..', 'models')
+    # Вариант 2: Мы в корне проекта (локальная разработка)  
+    else:
+        src_path = os.path.join(current_dir, 'src')
+        models_path = os.path.join(current_dir, 'models')
+    
+    # Добавляем пути в систему
+    sys.path.insert(0, os.path.abspath(src_path))
+    
+    # Проверяем существование путей
+    if not os.path.exists(models_path):
+        logging.warning(f"Папка models не найдена: {models_path}")
+    
+except Exception as e:
+    logging.error(f"Ошибка настройки путей: {e}")
+
+# Теперь импортируем наши модули
+try:
+    from config import feature_order, russian_name
+    from predictor import RAPredictor
 except ImportError as e:
-    print(f"❌ Ошибка импорта RAPredictor: {e}")
-    # Пробуем альтернативный путь
-    import sys
-    sys.path.append('.')  # Добавляем текущую директорию
-    try:
-        from src.predictor import RAPredictor
-        print("✅ RAPredictor импортирован через sys.path")
-    except ImportError:
-        st.error("❌ Не удалось импортировать RAPredictor. Проверьте наличие файла src/predictor.py")
-        RAPredictor = None  # Устанавливаем None чтобы избежать ошибок
+    logging.error(f"Ошибка импорта: {e}")
+    st.error(f"Ошибка загрузки модулей: {e}")
 
-from config import feature_order
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 st.set_page_config(page_title="🎓 RANK FORECAST", layout="wide")
-
-# 5. ПРОСТОЙ ИНТЕРФЕЙС ДО ЗАГРУЗКИ МОДЕЛЕЙ
 st.title("🎓 RANK FORECAST - Универсальная модель")
 
 # Данные для ДГТУ и ДонНТУ
