@@ -24,8 +24,7 @@ import numpy as np
 print(f"✅ NumPy загружен: {np.__version__}")
 
 # 2. ПРОВЕРЯЕМ, ЧТО ВСЁ РАБОТАЕТ
-print(f"NumPy имеет __version__: {hasattr(np, '__version__')}")
-print(f"np.array существует: {hasattr(np, 'array')}")
+
 
 # 3. ПРОВЕРЯЕМ _core (должна быть заглушка)
 try:
@@ -40,13 +39,31 @@ import pandas as pd
 import pickle
 import logging
 
+
+
+
+try:
+    # Импортируем RAPredictor из вашего файла
+    from src.predictor import RAPredictor
+    print("✅ RAPredictor импортирован")
+except ImportError as e:
+    print(f"❌ Ошибка импорта RAPredictor: {e}")
+    # Пробуем альтернативный путь
+    import sys
+    sys.path.append('.')  # Добавляем текущую директорию
+    try:
+        from src.predictor import RAPredictor
+        print("✅ RAPredictor импортирован через sys.path")
+    except ImportError:
+        st.error("❌ Не удалось импортировать RAPredictor. Проверьте наличие файла src/predictor.py")
+        RAPredictor = None  # Устанавливаем None чтобы избежать ошибок
+
+from config import feature_order
 logging.basicConfig(level=logging.INFO)
 st.set_page_config(page_title="🎓 RANK FORECAST", layout="wide")
 
 # 5. ПРОСТОЙ ИНТЕРФЕЙС ДО ЗАГРУЗКИ МОДЕЛЕЙ
 st.title("🎓 RANK FORECAST - Универсальная модель")
-st.write(f"**NumPy версия:** {np.__version__}")
-st.write(f"**Pandas версия:** {pd.__version__}")
 
 # Данные для ДГТУ и ДонНТУ
 DGSU_DATA = {
