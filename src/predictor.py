@@ -104,13 +104,13 @@ class RAPredictor:
         if not os.path.exists(model_info_path):
             raise FileNotFoundError("Модели не найдены. Сначала обучите модели.")
         
-        self.model_info = load(model_info_path)
+        self.model_info = pickle.load(model_info_path)
         
         # Определение типа модели для использования
         if model_type == 'best':
             best_model_type_path = f"{model_path}/best_model_type.pkl"
             if os.path.exists(best_model_type_path):
-                self.model_type = load(best_model_type_path)
+                self.model_type = pickle.load(best_model_type_path)
             else:
                 self.model_type = 'xgboost'  # По умолчанию
         else:
@@ -120,7 +120,7 @@ class RAPredictor:
         scaler_path = f"{model_path}/scaler.pkl"
         if not os.path.exists(scaler_path):
             raise FileNotFoundError("Scaler не найден")
-        self.scaler = load(scaler_path)
+        self.scaler = pickle.load(scaler_path)
         
         # Загрузка модели
         if self.model_type == 'neural_network':
@@ -131,7 +131,7 @@ class RAPredictor:
             else:
                 self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
                 self.model = SimpleRankPredictor(input_size=len(feature_order))
-                self.model.load_state_dict(torch.load(nn_model_path, map_location=self.device))
+                self.model.load_state_dict(torch.pickle.load(nn_model_path, map_location=self.device))
                 self.model.to(self.device)
                 self.model.eval()
         
@@ -139,7 +139,7 @@ class RAPredictor:
             xgb_model_path = f"{model_path}/xgb_model.pkl"
             if not os.path.exists(xgb_model_path):
                 raise FileNotFoundError("XGBoost модель не найдена")
-            self.model = load(xgb_model_path)
+            self.model = pickle.load(xgb_model_path)
         
         self.feature_order = self.model_info['feature_order']
         current_features = feature_order
