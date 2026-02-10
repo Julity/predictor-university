@@ -1,6 +1,54 @@
 # app/main.py - ИСПРАВЛЕННАЯ ВЕРСИЯ
 import sys
 import os
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(current_dir)
+
+# Добавляем пути в правильном порядке
+sys.path.insert(0, project_root)           # Корень проекта
+sys.path.insert(0, current_dir)           # Папка app
+sys.path.insert(0, os.path.join(project_root, 'src'))  # Папка src
+
+print(f"=== НАСТРОЙКА ПУТЕЙ ===")
+print(f"Текущая директория: {current_dir}")
+print(f"Корень проекта: {project_root}")
+print(f"Python path: {sys.path}")
+
+# Проверяем наличие файлов
+print(f"\n=== ПРОВЕРКА ФАЙЛОВ ===")
+for file_path in [
+    os.path.join(project_root, 'config.py'),
+    os.path.join(project_root, 'src', 'predictor.py'),
+    os.path.join(current_dir, 'main.py')
+]:
+    exists = "✅ СУЩЕСТВУЕТ" if os.path.exists(file_path) else "❌ ОТСУТСТВУЕТ"
+    print(f"{exists}: {file_path}")
+
+# ============================================
+# ПАТЧ numpy._core (если нужен)
+# ============================================
+try:
+    # Проверяем версию numpy
+    import numpy
+    numpy_version = numpy.__version__
+    print(f"\n=== NUMPY ВЕРСИЯ: {numpy_version} ===")
+    
+    if numpy_version.startswith('1.26'):
+        print("Используем numpy 1.26+, патч не требуется")
+    else:
+        print("Используем старую версию numpy, применяем патч")
+        class SimpleCoreStub:
+            def __getattr__(self, name): return SimpleCoreStub()
+            def __call__(self, *args, **kwargs): return SimpleCoreStub()
+            def __iter__(self): return iter([])
+            def __getitem__(self, key): return SimpleCoreStub()
+        
+        stub = SimpleCoreStub()
+        sys.modules['numpy._core'] = stub
+        print("✅ Патч numpy._core применен")
+        
+except Exception as e:
+    print(f"⚠️ Ошибка при патче numpy: {e}")
 
 # 0. ПАТЧ ТОЛЬКО numpy._core
 try:
