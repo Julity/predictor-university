@@ -1,123 +1,128 @@
-# app/main.py - ИСПРАВЛЕННАЯ ВЕРСИЯ
+# app/main.py - ИСПРАВЛЕННЫЙ НАЧАЛО
+
 import sys
 import os
+
+# ============================================
+# 0. ПАТЧ NUMPY._core САМЫМ ПЕРВЫМ ДЕЛОМ!
+# ============================================
+print("=== ПАТЧ NUMPY._core ===")
+
+# Создаем заглушку ДО импорта numpy
+class NumpyCoreStub:
+    """Заглушка для numpy._core"""
+    def __init__(self):
+        self.multiarray = self
+        self.umath = self
+        self._dtype_ctypes = self
+        self._dtype = self
+    
+    def __getattr__(self, name):
+        if name.startswith('__'):
+            raise AttributeError(name)
+        return NumpyCoreStub()
+    
+    def __call__(self, *args, **kwargs):
+        return NumpyCoreStub()
+    
+    def __iter__(self):
+        return iter([])
+    
+    def __getitem__(self, key):
+        return NumpyCoreStub()
+
+# Создаем полную структуру numpy._core
+stub = NumpyCoreStub()
+sys.modules['numpy._core'] = stub
+sys.modules['numpy._core.multiarray'] = stub
+sys.modules['numpy._core.umath'] = stub
+sys.modules['numpy._core._dtype_ctypes'] = stub
+sys.modules['numpy._core._dtype'] = stub
+
+print("✅ Патч numpy._core применен (полная структура)")
+
+# ============================================
+# 1. НАСТРОЙКА ПУТЕЙ
+# ============================================
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_root = os.path.dirname(current_dir)
 
-# Добавляем пути в правильном порядке
-sys.path.insert(0, project_root)           # Корень проекта
-sys.path.insert(0, current_dir)           # Папка app
-sys.path.insert(0, os.path.join(project_root, 'src'))  # Папка src
+sys.path.insert(0, project_root)
+sys.path.insert(0, current_dir)
+sys.path.insert(0, os.path.join(project_root, 'src'))
 
-print(f"=== НАСТРОЙКА ПУТЕЙ ===")
+print(f"\n=== НАСТРОЙКА ПУТЕЙ ===")
 print(f"Текущая директория: {current_dir}")
 print(f"Корень проекта: {project_root}")
-print(f"Python path: {sys.path}")
 
-# Проверяем наличие файлов
-print(f"\n=== ПРОВЕРКА ФАЙЛОВ ===")
-for file_path in [
-    os.path.join(project_root, 'config.py'),
-    os.path.join(project_root, 'src', 'predictor.py'),
-    os.path.join(current_dir, 'main.py')
-]:
-    exists = "✅ СУЩЕСТВУЕТ" if os.path.exists(file_path) else "❌ ОТСУТСТВУЕТ"
-    print(f"{exists}: {file_path}")
+# ============================================
+# 2. ИМПОРТ NUMPY (после патча!)
+# ============================================
 try:
-    from src.predictor import RAPredictor
-    print(f"✅ RAPredictor загружен из src.predictor")
-except ImportError as e:
-    print(f"❌ Ошибка импорта RAPredictor: {e}")
-    # Пробуем альтернативный путь
+    import numpy as np
+    print(f"✅ NumPy загружен: {np.__version__}")
+    
+    # Проверяем, что патч работает
     try:
-        import sys
-        sys.path.append('src')
-        from predictor import RAPredictor
-        print(f"✅ RAPredictor загружен после добавления пути")
-    except ImportError as e2:
-        print(f"❌ Критическая ошибка: не удалось загрузить RAPredictor: {e2}")
-        # Создаем заглушку
-        class RAPredictorStub:
-            def __init__(self, *args, **kwargs):
-                st.error("❌ Модель не загружена. Проверьте наличие файлов моделей в папке 'models/'")
-                raise ImportError("Модель не загружена")
-            
-            def predict_rank(self, df):
-                return 100.0
-                
-            def suggest_improvement(self, *args, **kwargs):
-                return [], 100.0
+        import numpy._core
+        print("✅ numpy._core доступен (заглушка)")
+    except Exception as e:
+        print(f"⚠️ numpy._core: {e}")
         
-        RAPredictor = RAPredictorStub
-        print("⚠️ Создана заглушка RAPredictor")
-# ============================================
-# ПАТЧ numpy._core (если нужен)
-# ============================================
-try:
-    # Проверяем версию numpy
-    import numpy
-    numpy_version = numpy.__version__
-    print(f"\n=== NUMPY ВЕРСИЯ: {numpy_version} ===")
+except Exception as e:
+    print(f"❌ Ошибка загрузки NumPy: {e}")
+    # Создаем простую заглушку для numpy
+    class FakeNumPy:
+        __version__ = "1.24.3"
+        ndarray = list
+        def array(self, *args, **kwargs):
+            return list(*args, **kwargs)
+        def __getattr__(self, name):
+            return FakeNumPy()
     
-    if numpy_version.startswith('1.26'):
-        print("Используем numpy 1.26+, патч не требуется")
-    else:
-        print("Используем старую версию numpy, применяем патч")
-        class SimpleCoreStub:
-            def __getattr__(self, name): return SimpleCoreStub()
-            def __call__(self, *args, **kwargs): return SimpleCoreStub()
-            def __iter__(self): return iter([])
-            def __getitem__(self, key): return SimpleCoreStub()
-        
-        stub = SimpleCoreStub()
-        sys.modules['numpy._core'] = stub
-        print("✅ Патч numpy._core применен")
-        
-except Exception as e:
-    print(f"⚠️ Ошибка при патче numpy: {e}")
+    np = FakeNumPy()
+    sys.modules['numpy'] = np
+    print("⚠️ Создана заглушка numpy")
 
-# 0. ПАТЧ ТОЛЬКО numpy._core
+# ============================================
+# 3. ИМПОРТ ОСТАЛЬНЫХ БИБЛИОТЕК
+# ============================================
+print("\n=== ЗАГРУЗКА БИБЛИОТЕК ===")
+
+# Сначала импортируем scipy ДО sklearn
 try:
-    import early_fix
-    print("✅ early_fix загружен")
+    import scipy
+    print(f"✅ SciPy загружен: {scipy.__version__}")
 except Exception as e:
-    print(f"⚠️ early_fix ошибка: {e}")
-    # Минимальный патч только для _core
-    class SimpleCoreStub:
-        def __getattr__(self, name): return SimpleCoreStub()
-        def __call__(self, *args, **kwargs): return SimpleCoreStub()
-        def __iter__(self): return iter([])
-        def __getitem__(self, key): return SimpleCoreStub()
-    
-    stub = SimpleCoreStub()
-    sys.modules['numpy._core'] = stub
-    # НЕ трогаем numpy.core!
+    print(f"⚠️ Ошибка SciPy: {e}")
 
-# 1. ИМПОРТИРУЕМ NUMPY (теперь он должен работать)
-import numpy as np
-print(f"✅ NumPy загружен: {np.__version__}")
-
-# 2. ПРОВЕРЯЕМ, ЧТО ВСЁ РАБОТАЕТ
-
-
-# 3. ПРОВЕРЯЕМ _core (должна быть заглушка)
 try:
-    import numpy._core
-    print(f"✅ numpy._core доступен (заглушка)")
+    import sklearn
+    print(f"✅ scikit-learn загружен: {sklearn.__version__}")
 except Exception as e:
-    print(f"⚠️ numpy._core: {e}")
+    print(f"⚠️ Ошибка scikit-learn: {e}")
 
-# 4. ОСТАЛЬНЫЕ ИМПОРТЫ
 import streamlit as st
 import pandas as pd
 import pickle
 import logging
+
+print("✅ Streamlit, pandas, pickle загружены")
+
+# ============================================
+# 4. ИМПОРТ КОНФИГА
+# ============================================
 try:
     from config import feature_order, russian_name
-    print(f"✅ config загружен, feature_order: {len(feature_order)} признаков")
+    print(f"✅ config загружен, {len(feature_order)} признаков")
 except ImportError as e:
     print(f"❌ Ошибка импорта config: {e}")
-    print(f"Ищем config в: {os.path.join(project_root, 'config.py')}")
+    # Минимальный конфиг
+    feature_order = [...]
+    def russian_name(feature):
+        return feature.replace('_', ' ').title()
+        
+    
 logging.basicConfig(level=logging.INFO)
 st.set_page_config(page_title="🎓 RANK FORECAST", layout="wide")
 
