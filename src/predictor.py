@@ -49,7 +49,13 @@ class SimpleRankPredictor(nn.Module):
 class RAPredictor:
     
     def __init__(self, model_type='best'):
-        """  Инициализация предсказателя"""
+        """Инициализация предсказателя"""
+        print(f"\n=== ИНИЦИАЛИЗАЦИЯ RAPredictor ===")
+        
+        # Определяем project_root
+        current_file_dir = os.path.dirname(os.path.abspath(__file__))
+        project_root = os.path.dirname(current_file_dir)
+        
         possible_paths = [
             "models",
             "../models",
@@ -58,116 +64,109 @@ class RAPredictor:
             os.path.join(os.getcwd(), "models")
         ]
         
-        
         model_path = None
         for path in possible_paths:
-            try:
-                if os.path.exists(path):
-                    # Проверяем, есть ли хотя бы один файл модели
-                    model_files = os.listdir(path) if os.path.isdir(path) else []
-                    if any(f.endswith(('.pkl', '.pth', '.joblib')) for f in model_files):
-                        model_path = path
-                        st.info(f"✓ Найдена папка с моделями: {path}")
-                        st.info(f"   Файлы: {model_files[:5]}")  # Показываем первые 5 файлов
-                        break
-            except Exception as e:
-                logging.warning(f"Ошибка проверки пути {path}: {e}")
+            if os.path.exists(path):
+                model_files = os.listdir(path) if os.path.isdir(path) else []
+                if any(f.endswith(('.pkl', '.pth', '.joblib')) for f in model_files):
+                    model_path = path
+                    st.info(f"✓ Найдена папка с моделями: {path}")
+                    st.info(f"   Файлы: {model_files}")
+                    break
         
         if model_path is None:
-            # Если ничего не нашли, покажем что есть
-            current_dir = os.getcwd()
-            st.error(f"Папка models не найдена! Текущая директория: {current_dir}")
-            st.error(f"Содержимое директории: {os.listdir('.')}")
-            raise FileNotFoundError("Папка models не найдена ни по одному из путей")
-            # Пробуем найти любые файлы
-            all_files = []
-            for root, dirs, files in os.walk('.'):
-                for file in files:
-                    if file.endswith(('.pkl', '.pth')):
-                        all_files.append(os.path.join(root, file))
-            
-            if all_files:
-                st.error(f"Найденные файлы моделей: {all_files}")
-            else:
-                st.error("Файлы моделей не найдены")
-            
+            st.error("❌ Папка models не найдена!")
             raise FileNotFoundError("Папка models не найдена")
+        
         self.model_path = model_path   
-        logging.info(f"Используется путь к моделям: {model_path}")
-          # ПРОВЕРКА КОНКРЕТНЫХ ФАЙЛОВ
-        required_files = ['xgb_model.pkl', 'scaler.pkl', 'model_info.pkl']
-        missing_files = []
         
-        for file in required_files:
-            full_path = os.path.join(model_path, file)
-            if not os.path.exists(full_path):
-                missing_files.append(file)
-                st.warning(f"⚠️ Не найден файл: {file}")
+        # ПРОВЕРКА И ЗАГРУЗКА ФАЙЛОВ
+        print(f"\n=== ЗАГРУЗКА МОДЕЛЕЙ ===")
         
-        if missing_files:
-            st.error(f"Отсутствуют файлы: {missing_files}")
-            available = os.listdir(model_path)
-            st.error(f"Доступные файлы: {available}")
-        # Дальше ваш существующий код...
-        model_info_path = f"{model_path}/model_info.pkl"
-        if not os.path.exists(model_info_path):
-            raise FileNotFoundError(f"Модели не найдены по пути: {model_info_path}")
-        
-        # Загрузка информации о моделях
-        model_info_path = f"{model_path}/model_info.pkl"
-        if not os.path.exists(model_info_path):
-            raise FileNotFoundError("Модели не найдены. Сначала обучите модели.")
-        
-        with open(model_info_path, 'rb') as f:
-            self.model_info = pickle.load(f)
-        
-        # Определение типа модели для использования
-        if model_type == 'best':
-            best_model_type_path = f"{model_path}/best_model_type.pkl"
+        try:
+            # 1. Загрузка scaler.pkl
+            scaler_path = os.path.join(model_path, "scaler.pkl")
+            print(f"Загрузка scaler из: {scaler_path}")
+            print(f"Файл существует: {os.path.exists(scaler_path)}")
+            print(f"Размер файла: {os.path.getsize(scaler_path) if os.path.exists(scaler_path) else 'N/A'} байт")
+            
+            with open(scaler_path, 'rb') as f:
+                self.scaler = pickle.load(f)
+            print("✅ scaler.pkl загружен")
+            
+            # 2. Загрузка model_info.pkl
+            model_info_path = os.path.join(model_path, "model_info.pkl")
+            print(f"\nЗагрузка model_info из: {model_info_path}")
+            
+            with open(model_info_path, 'rb') as f:
+                self.model_info = pickle.load(f)
+            print("✅ model_info.pkl загружен")
+            
+            # 3. Определение типа модели
+            best_model_type_path = os.path.join(model_path, "best_model_type.pkl")
             if os.path.exists(best_model_type_path):
-                self.model_type = pickle.load(best_model_type_path)
+                with open(best_model_type_path, 'rb') as f:
+                    self.model_type = pickle.load(f)
             else:
-                self.model_type = 'xgboost'  # По умолчанию
-        else:
-            self.model_type = model_type
-        
-        # Загрузка scaler
-        scaler_path = f"{model_path}/scaler.pkl"
-        if not os.path.exists(scaler_path):
-            raise FileNotFoundError("Scaler не найден")
-        with open(scaler_path, 'rb') as f:
-            self.scaler = pickle.load(f)
-
-        
-        # Загрузка модели
-        if self.model_type == 'neural_network':
-            nn_model_path = f"{model_path}/nn_model.pth"
-            if not os.path.exists(nn_model_path):
-                logging.warning("Нейросеть не найдена, используем XGBoost")
                 self.model_type = 'xgboost'
-            else:
-                self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-                self.model = SimpleRankPredictor(input_size=len(feature_order))
-                self.model.load_state_dict(torch.load(nn_model_path, map_location=self.device))
-                self.model.to(self.device)
-                self.model.eval()
-        
-        if self.model_type == 'xgboost':
-            xgb_model_path = f"{model_path}/xgb_model.pkl"
-            if not os.path.exists(xgb_model_path):
-                raise FileNotFoundError("XGBoost модель не найдена")
-            with open(xgb_model_path, 'rb') as f:
-                self.model = pickle.load(f)
-        
-        self.feature_order = self.model_info['feature_order']
-        current_features = feature_order
-        saved_features = self.model_info['feature_order']
-        
-        if current_features != saved_features:
-            logging.warning("Порядок признаков в config.py не совпадает с обученной моделью!")
-            logging.warning(f"Используется порядок из обученной модели")
-        
-        logging.info(f"Загружен порядок признаков: {len(self.feature_order)} признаков")
+            print(f"Тип модели: {self.model_type}")
+            
+            # 4. Загрузка основной модели
+            if self.model_type == 'neural_network':
+                nn_model_path = os.path.join(model_path, "nn_model.pth")
+                print(f"Загрузка нейросети из: {nn_model_path}")
+                
+                if torch is not None and os.path.exists(nn_model_path):
+                    self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+                    self.model = SimpleRankPredictor(input_size=len(feature_order))
+                    self.model.load_state_dict(torch.load(nn_model_path, map_location=self.device))
+                    self.model.to(self.device)
+                    self.model.eval()
+                    print("✅ Нейросеть загружена")
+                else:
+                    print("⚠️ Нейросеть не найдена, используем XGBoost")
+                    self.model_type = 'xgboost'
+            
+            if self.model_type == 'xgboost':
+                xgb_model_path = os.path.join(model_path, "xgb_model.pkl")
+                print(f"Загрузка XGBoost из: {xgb_model_path}")
+                
+                # Пробуем разные способы загрузки
+                try:
+                    # Способ 1: Обычная загрузка
+                    with open(xgb_model_path, 'rb') as f:
+                        self.model = pickle.load(f)
+                    print("✅ XGBoost модель загружена (способ 1)")
+                except Exception as e1:
+                    print(f"Способ 1 не сработал: {e1}")
+                    
+                    try:
+                        # Способ 2: Используем joblib
+                        self.model = joblib.load(xgb_model_path)
+                        print("✅ XGBoost модель загружена (способ 2: joblib)")
+                    except Exception as e2:
+                        print(f"Способ 2 не сработал: {e2}")
+                        
+                        try:
+                            # Способ 3: Используем pickle с протоколом
+                            with open(xgb_model_path, 'rb') as f:
+                                self.model = pickle.load(f, encoding='latin1')
+                            print("✅ XGBoost модель загружена (способ 3: latin1 encoding)")
+                        except Exception as e3:
+                            print(f"Способ 3 не сработал: {e3}")
+                            raise
+            
+            # 5. Устанавливаем порядок признаков
+            self.feature_order = self.model_info.get('feature_order', feature_order)
+            print(f"Признаков: {len(self.feature_order)}")
+            
+            st.success("✅ Все модели успешно загружены!")
+            
+        except Exception as e:
+            st.error(f"❌ Ошибка загрузки модели: {e}")
+            import traceback
+            st.error(f"Подробности: {traceback.format_exc()}")
+            raise
     def validate_realism(self, df):
         """Проверка реалистичности входных данных"""
         reasonable_ranges = {
