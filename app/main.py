@@ -23,7 +23,33 @@ for file_path in [
 ]:
     exists = "✅ СУЩЕСТВУЕТ" if os.path.exists(file_path) else "❌ ОТСУТСТВУЕТ"
     print(f"{exists}: {file_path}")
-
+try:
+    from src.predictor import RAPredictor
+    print(f"✅ RAPredictor загружен из src.predictor")
+except ImportError as e:
+    print(f"❌ Ошибка импорта RAPredictor: {e}")
+    # Пробуем альтернативный путь
+    try:
+        import sys
+        sys.path.append('src')
+        from predictor import RAPredictor
+        print(f"✅ RAPredictor загружен после добавления пути")
+    except ImportError as e2:
+        print(f"❌ Критическая ошибка: не удалось загрузить RAPredictor: {e2}")
+        # Создаем заглушку
+        class RAPredictorStub:
+            def __init__(self, *args, **kwargs):
+                st.error("❌ Модель не загружена. Проверьте наличие файлов моделей в папке 'models/'")
+                raise ImportError("Модель не загружена")
+            
+            def predict_rank(self, df):
+                return 100.0
+                
+            def suggest_improvement(self, *args, **kwargs):
+                return [], 100.0
+        
+        RAPredictor = RAPredictorStub
+        print("⚠️ Создана заглушка RAPredictor")
 # ============================================
 # ПАТЧ numpy._core (если нужен)
 # ============================================
