@@ -38,7 +38,12 @@ import streamlit as st
 import pandas as pd
 import pickle
 import logging
-
+try:
+    from config import feature_order, russian_name
+    print(f"✅ config загружен, feature_order: {len(feature_order)} признаков")
+except ImportError as e:
+    print(f"❌ Ошибка импорта config: {e}")
+    print(f"Ищем config в: {os.path.join(project_root, 'config.py')}")
 logging.basicConfig(level=logging.INFO)
 st.set_page_config(page_title="🎓 RANK FORECAST", layout="wide")
 
