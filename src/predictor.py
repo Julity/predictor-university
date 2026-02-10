@@ -1,4 +1,20 @@
 # src/predictor.py
+import sys
+import os
+
+
+# Определяем project_root относительно расположения predictor.py
+current_file_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(current_file_dir)  # Поднимаемся на уровень выше src/
+
+# Добавляем пути для импорта
+sys.path.insert(0, project_root)
+sys.path.insert(0, current_file_dir)
+
+print(f"=== predictor.py ===")
+print(f"Файл: {__file__}")
+print(f"Директория файла: {current_file_dir}")
+print(f"Корень проекта: {project_root}")
 import numpy as np
 import pandas as pd
 import pickle
@@ -8,7 +24,7 @@ import torch.nn as nn
 import logging
 from config import feature_order, feature_weights, realistic_ranges, weak_features
 import streamlit as st
-import os
+
 
 print(f"predictor.py: NumPy {np.__version__}")
 # Упрощенная нейросеть (такая же как в train_model.py)
