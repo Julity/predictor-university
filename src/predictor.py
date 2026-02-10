@@ -8,6 +8,7 @@ import torch.nn as nn
 import logging
 from config import feature_order, feature_weights, realistic_ranges, weak_features
 import streamlit as st
+import os
 
 print(f"predictor.py: NumPy {np.__version__}")
 # Упрощенная нейросеть (такая же как в train_model.py)
@@ -34,15 +35,13 @@ class RAPredictor:
     def __init__(self, model_type='best'):
         """  Инициализация предсказателя"""
         possible_paths = [
-            "models",                           # Локальная разработка
-            "app/models",                       # Streamlit Cloud структура 1
-            "../models",                        # Streamlit Cloud структура 2
-            os.path.join(os.path.dirname(__file__), "..", "models"),  # Абсолютный
-            "/app/models",                         # Docker/Render
-            "/app/app/models",                     # Альтернатива Docker
-            os.path.join(os.getcwd(), "models"),   # Текущая рабочая директория
-            os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "models")  # Двойной родитель
+            "models",
+            "../models",
+            os.path.join(project_root, "models"),
+            "/app/models",
+            os.path.join(os.getcwd(), "models")
         ]
+        
         
         model_path = None
         for path in possible_paths:
