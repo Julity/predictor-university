@@ -51,7 +51,12 @@ class RAPredictor:
     def __init__(self, model_type='best'):
         """Инициализация предсказателя"""
         print(f"\n=== ИНИЦИАЛИЗАЦИЯ RAPredictor ===")
-        
+        import os
+        import pickle
+        import joblib
+        import numpy as np
+        import pandas as pd
+        import streamlit as st
         # Определяем project_root
         current_file_dir = os.path.dirname(os.path.abspath(__file__))
         project_root = os.path.dirname(current_file_dir)
@@ -62,6 +67,7 @@ class RAPredictor:
             os.path.join(project_root, "models"),
             "/app/models",
             os.path.join(os.getcwd(), "models")
+            os.path.join(current_file_dir, "..", "models")
         ]
         
         model_path = None
