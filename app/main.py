@@ -192,6 +192,8 @@ DONNTU_DATA = {
 @st.cache_resource
 def load_predictor():
     try:
+        from src.predictor import RAPredictor
+        print("✅ RAPredictor успешно импортирован")
         return RAPredictor()
     except Exception as e:
         st.error(f"Ошибка загрузки модели: {e}")
