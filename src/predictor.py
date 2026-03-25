@@ -66,7 +66,7 @@ class RAPredictor:
             "../models",
             os.path.join(project_root, "models"),
             "/app/models",
-            os.path.join(os.getcwd(), "models")
+            os.path.join(os.getcwd(), "models"),
             os.path.join(current_file_dir, "..", "models")
         ]
         
