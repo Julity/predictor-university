@@ -143,28 +143,6 @@ class RAPredictor:
                     with open(xgb_model_path, 'rb') as f:
                         self.model = pickle.load(f)
                     print("✅ XGBoost модель загружена (способ 1)")
-                except Exception as e1:
-                    print(f"Способ 1 не сработал: {e1}")
-                    
-                    try:
-                        # Способ 2: Используем joblib
-                        self.model = joblib.load(xgb_model_path)
-                        print("✅ XGBoost модель загружена (способ 2: joblib)")
-                    except Exception as e2:
-                        print(f"Способ 2 не сработал: {e2}")
-                        
-                        try:
-                            # Способ 3: Используем pickle с протоколом
-                            with open(xgb_model_path, 'rb') as f:
-                                self.model = pickle.load(f, encoding='latin1')
-                            print("✅ XGBoost модель загружена (способ 3: latin1 encoding)")
-                        except Exception as e3:
-                            print(f"Способ 3 не сработал: {e3}")
-                            raise
-            
-            # 5. Устанавливаем порядок признаков
-            self.feature_order = self.model_info.get('feature_order', feature_order)
-            print(f"Признаков: {len(self.feature_order)}")
             
             st.success("✅ Все модели успешно загружены!")
             
