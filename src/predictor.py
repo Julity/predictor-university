@@ -143,14 +143,24 @@ class RAPredictor:
                     with open(xgb_model_path, 'rb') as f:
                         self.model = pickle.load(f)
                     print("✅ XGBoost модель загружена (способ 1)")
+                except Exception as e1:
+                    print(f"⚠️ Способ 1 не сработал: {e1}")
+                    try:
+                        # Способ 2: joblib
+                        self.model = joblib.load(xgb_model_path)
+                        print("✅ XGBoost модель загружена (способ 2: joblib)")
+                    except Exception as e2:
+                        print(f"⚠️ Способ 2 не сработал: {e2}")
+                        try:
+                            # Способ 3: pickle с latin1
+                            with open(xgb_model_path, 'rb') as f:
+                                self.model = pickle.load(f, encoding='latin1')
+                            print("✅ XGBoost модель загружена (способ 3: latin1)")
+                        except Exception as e3:
+                            print(f"❌ Все способы загрузки не сработали: {e3}")
+                            raise
             
             st.success("✅ Все модели успешно загружены!")
-            
-        except Exception as e:
-            st.error(f"❌ Ошибка загрузки модели: {e}")
-            import traceback
-            st.error(f"Подробности: {traceback.format_exc()}")
-            raise
     def validate_realism(self, df):
         """Проверка реалистичности входных данных"""
         reasonable_ranges = {
