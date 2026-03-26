@@ -161,6 +161,9 @@ class RAPredictor:
                             raise
             
             st.success("✅ Все модели успешно загружены!")
+         except Exception as e3:
+                            print(f"❌ Все способы загрузки не сработали: {e3}")
+                            raise
     def validate_realism(self, df):
         """Проверка реалистичности входных данных"""
         reasonable_ranges = {
