@@ -57,6 +57,7 @@ class RAPredictor:
         import numpy as np
         import pandas as pd
         import streamlit as st
+        
         # Определяем project_root
         current_file_dir = os.path.dirname(os.path.abspath(__file__))
         project_root = os.path.dirname(current_file_dir)
@@ -93,26 +94,22 @@ class RAPredictor:
             # 1. Загрузка scaler.pkl
             scaler_path = os.path.join(model_path, "scaler.pkl")
             print(f"Загрузка scaler из: {scaler_path}")
-            print(f"Файл существует: {os.path.exists(scaler_path)}")
-            print(f"Размер файла: {os.path.getsize(scaler_path) if os.path.exists(scaler_path) else 'N/A'} байт")
-            
             with open(scaler_path, 'rb') as f:
-                self.scaler = pickle.load(f)
+                self.scaler = pickle.load(f, encoding='latin1')
             print("✅ scaler.pkl загружен")
             
             # 2. Загрузка model_info.pkl
             model_info_path = os.path.join(model_path, "model_info.pkl")
-            print(f"\nЗагрузка model_info из: {model_info_path}")
-            
+            print(f"Загрузка model_info из: {model_info_path}")
             with open(model_info_path, 'rb') as f:
-                self.model_info = pickle.load(f)
+                self.model_info = pickle.load(f, encoding='latin1')
             print("✅ model_info.pkl загружен")
             
             # 3. Определение типа модели
             best_model_type_path = os.path.join(model_path, "best_model_type.pkl")
             if os.path.exists(best_model_type_path):
                 with open(best_model_type_path, 'rb') as f:
-                    self.model_type = pickle.load(f)
+                    self.model_type = pickle.load(f, encoding='latin1')
             else:
                 self.model_type = 'xgboost'
             print(f"Тип модели: {self.model_type}")
@@ -139,31 +136,36 @@ class RAPredictor:
                 
                 # Пробуем разные способы загрузки
                 try:
-                    # Способ 1: Обычная загрузка
-                    with open(xgb_model_path, 'rb') as f:
-                        self.model = pickle.load(f)
-                    print("✅ XGBoost модель загружена (способ 1)")
-                except Exception as e1:
-                    print(f"⚠️ Способ 1 не сработал: {e1}")
+                    # Способ 1: joblib (рекомендуется)
+                    self.model = joblib.load(xgb_model_path)
+                    print("✅ XGBoost загружен (joblib)")
+                except:
                     try:
-                        # Способ 2: joblib
-                        self.model = joblib.load(xgb_model_path)
-                        print("✅ XGBoost модель загружена (способ 2: joblib)")
-                    except Exception as e2:
-                        print(f"⚠️ Способ 2 не сработал: {e2}")
+                        # Способ 2: pickle с latin1
+                        with open(xgb_model_path, 'rb') as f:
+                            self.model = pickle.load(f, encoding='latin1')
+                        print("✅ XGBoost загружен (pickle + latin1)")
+                    except:
                         try:
-                            # Способ 3: pickle с latin1
+                            # Способ 3: обычный pickle
                             with open(xgb_model_path, 'rb') as f:
-                                self.model = pickle.load(f, encoding='latin1')
-                            print("✅ XGBoost модель загружена (способ 3: latin1)")
-                        except Exception as e3:
-                            print(f"❌ Все способы загрузки не сработали: {e3}")
+                                self.model = pickle.load(f)
+                            print("✅ XGBoost загружен (pickle)")
+                        except Exception as e:
+                            print(f"❌ Не удалось загрузить XGBoost: {e}")
                             raise
             
+            # Устанавливаем порядок признаков
+            self.feature_order = self.model_info.get('feature_order', feature_order)
+            print(f"✅ Признаков: {len(self.feature_order)}")
+            
             st.success("✅ Все модели успешно загружены!")
-         except Exception as e3:
-                            print(f"❌ Все способы загрузки не сработали: {e3}")
-                            raise
+            
+        except Exception as e:
+            st.error(f"❌ Ошибка загрузки модели: {e}")
+            import traceback
+            st.error(f"Подробности: {traceback.format_exc()}")
+            raise
     def validate_realism(self, df):
         """Проверка реалистичности входных данных"""
         reasonable_ranges = {
