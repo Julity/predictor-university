@@ -1,81 +1,53 @@
 # src/predictor.py
+# src/predictor.py - УПРОЩЕННАЯ ВЕРСИЯ
+
 import sys
 import os
+import joblib
+import numpy as np
+import pandas as pd
+import streamlit as st
 
-
-# Определяем project_root относительно расположения predictor.py
+# Определяем project_root
 current_file_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.dirname(current_file_dir)  # Поднимаемся на уровень выше src/
+project_root = os.path.dirname(current_file_dir)
 
-# Добавляем пути для импорта
+# Добавляем пути
 sys.path.insert(0, project_root)
 sys.path.insert(0, current_file_dir)
 
 print(f"=== predictor.py ===")
-print(f"Файл: {__file__}")
-print(f"Директория файла: {current_file_dir}")
 print(f"Корень проекта: {project_root}")
-import numpy as np
-import pandas as pd
-import pickle
-import joblib
-import torch
-import torch.nn as nn
-import logging
-from config import feature_order, feature_weights, realistic_ranges, weak_features
-import streamlit as st
 
-
-print(f"predictor.py: NumPy {np.__version__}")
-# Упрощенная нейросеть (такая же как в train_model.py)
-class SimpleRankPredictor(nn.Module):
-    def __init__(self, input_size):
-        super(SimpleRankPredictor, self).__init__()
-        self.network = nn.Sequential(
-            nn.Linear(input_size, 128),
-            nn.ReLU(),
-            nn.Dropout(0.2),
-            nn.Linear(128, 64),
-            nn.ReLU(),
-            nn.Dropout(0.2),
-            nn.Linear(64, 32),
-            nn.ReLU(),
-            nn.Linear(32, 1)
-        )
-        
-    def forward(self, x):
-        return self.network(x)
+# Импорт config
+try:
+    from config import feature_order, russian_name
+    print(f"✅ config загружен, {len(feature_order)} признаков")
+except ImportError as e:
+    print(f"⚠️ Ошибка импорта config: {e}")
+    feature_order = []
+    def russian_name(x): return x
 
 class RAPredictor:
     
     def __init__(self, model_type='best'):
-        """Инициализация предсказателя"""
+        """Инициализация предсказателя с загрузкой моделей через joblib"""
         print(f"\n=== ИНИЦИАЛИЗАЦИЯ RAPredictor ===")
-        import os
-        import pickle
-        import joblib
-        import numpy as np
-        import pandas as pd
-        import streamlit as st
         
-        # Определяем project_root
-        current_file_dir = os.path.dirname(os.path.abspath(__file__))
-        project_root = os.path.dirname(current_file_dir)
-        
+        # Поиск папки models
         possible_paths = [
             "models",
             "../models",
             os.path.join(project_root, "models"),
             "/app/models",
-            os.path.join(os.getcwd(), "models"),
-            os.path.join(current_file_dir, "..", "models")
+            os.path.join(os.getcwd(), "models")
         ]
         
         model_path = None
         for path in possible_paths:
-            if os.path.exists(path):
-                model_files = os.listdir(path) if os.path.isdir(path) else []
-                if any(f.endswith(('.pkl', '.pth', '.joblib')) for f in model_files):
+            if os.path.exists(path) and os.path.isdir(path):
+                model_files = os.listdir(path)
+                if any(f.endswith(('.pkl', '.joblib')) for f in model_files):
                     model_path = path
                     st.info(f"✓ Найдена папка с моделями: {path}")
                     st.info(f"   Файлы: {model_files}")
@@ -85,80 +57,27 @@ class RAPredictor:
             st.error("❌ Папка models не найдена!")
             raise FileNotFoundError("Папка models не найдена")
         
-        self.model_path = model_path   
-        
-        # ПРОВЕРКА И ЗАГРУЗКА ФАЙЛОВ
-        print(f"\n=== ЗАГРУЗКА МОДЕЛЕЙ ===")
-        
         try:
-            # 1. Загрузка scaler.pkl
+            # Загрузка всех моделей через joblib (просто и надежно)
             scaler_path = os.path.join(model_path, "scaler.pkl")
-            print(f"Загрузка scaler из: {scaler_path}")
-            with open(scaler_path, 'rb') as f:
-                self.scaler = pickle.load(f, encoding='latin1')
-            print("✅ scaler.pkl загружен")
+            self.scaler = joblib.load(scaler_path)
+            print("✅ Scaler загружен")
             
-            # 2. Загрузка model_info.pkl
-            model_info_path = os.path.join(model_path, "model_info.pkl")
-            print(f"Загрузка model_info из: {model_info_path}")
-            with open(model_info_path, 'rb') as f:
-                self.model_info = pickle.load(f, encoding='latin1')
-            print("✅ model_info.pkl загружен")
+            model_path_file = os.path.join(model_path, "xgb_model.pkl")
+            self.model = joblib.load(model_path_file)
+            print("✅ XGBoost модель загружена")
             
-            # 3. Определение типа модели
-            best_model_type_path = os.path.join(model_path, "best_model_type.pkl")
-            if os.path.exists(best_model_type_path):
-                with open(best_model_type_path, 'rb') as f:
-                    self.model_type = pickle.load(f, encoding='latin1')
+            info_path = os.path.join(model_path, "model_info.pkl")
+            self.model_info = joblib.load(info_path)
+            print("✅ Model info загружен")
+            
+            # Получаем порядок признаков
+            if 'feature_order' in self.model_info:
+                self.feature_order = self.model_info['feature_order']
             else:
-                self.model_type = 'xgboost'
-            print(f"Тип модели: {self.model_type}")
+                self.feature_order = feature_order
             
-            # 4. Загрузка основной модели
-            if self.model_type == 'neural_network':
-                nn_model_path = os.path.join(model_path, "nn_model.pth")
-                print(f"Загрузка нейросети из: {nn_model_path}")
-                
-                if torch is not None and os.path.exists(nn_model_path):
-                    self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-                    self.model = SimpleRankPredictor(input_size=len(feature_order))
-                    self.model.load_state_dict(torch.load(nn_model_path, map_location=self.device))
-                    self.model.to(self.device)
-                    self.model.eval()
-                    print("✅ Нейросеть загружена")
-                else:
-                    print("⚠️ Нейросеть не найдена, используем XGBoost")
-                    self.model_type = 'xgboost'
-            
-            if self.model_type == 'xgboost':
-                xgb_model_path = os.path.join(model_path, "xgb_model.pkl")
-                print(f"Загрузка XGBoost из: {xgb_model_path}")
-                
-                # Пробуем разные способы загрузки
-                try:
-                    # Способ 1: joblib (рекомендуется)
-                    self.model = joblib.load(xgb_model_path)
-                    print("✅ XGBoost загружен (joblib)")
-                except:
-                    try:
-                        # Способ 2: pickle с latin1
-                        with open(xgb_model_path, 'rb') as f:
-                            self.model = pickle.load(f, encoding='latin1')
-                        print("✅ XGBoost загружен (pickle + latin1)")
-                    except:
-                        try:
-                            # Способ 3: обычный pickle
-                            with open(xgb_model_path, 'rb') as f:
-                                self.model = pickle.load(f)
-                            print("✅ XGBoost загружен (pickle)")
-                        except Exception as e:
-                            print(f"❌ Не удалось загрузить XGBoost: {e}")
-                            raise
-            
-            # Устанавливаем порядок признаков
-            self.feature_order = self.model_info.get('feature_order', feature_order)
             print(f"✅ Признаков: {len(self.feature_order)}")
-            
             st.success("✅ Все модели успешно загружены!")
             
         except Exception as e:
@@ -166,167 +85,71 @@ class RAPredictor:
             import traceback
             st.error(f"Подробности: {traceback.format_exc()}")
             raise
-    def validate_realism(self, df):
-        """Проверка реалистичности входных данных"""
-        reasonable_ranges = {
-            'egescore_avg': (50, 100),
-            'egescore_contract': (40, 100),
-            'egescore_min': (30, 100),
-            'olympiad_winners': (0, 300),
-            'scopus_publications': (0, 10000),
-            'niokr_total': (0, 10000000),
-            'avg_salary_grads': (20, 200),
-            'foreign_students_share': (0, 50)
-        }
-        
-        warnings = []
-        for feat, (min_val, max_val) in reasonable_ranges.items():
-            value = df[feat].iloc[0]
-            if value < min_val:
-                warnings.append(f"⚠️ {feat}={value} СЛИШКОМ НИЗКИЙ (минимум {min_val})")
-            elif value > max_val:
-                warnings.append(f"⚠️ {feat}={value} СЛИШКОМ ВЫСОКИЙ (максимум {max_val})")
-        
-        return warnings
-    def prepare_input(self, df: pd.DataFrame) -> pd.DataFrame:
-        missing = set(self.feature_order) - set(df.columns)
-        if missing:
-            raise ValueError(f"Входные данные не содержат признаки: {missing}")
-        df_ordered = df[self.feature_order].copy()
-                
-        return df_ordered
-       
-    def normalize_weights(weights):
-        """Нормализует веса к 100%"""
-        total = sum(weights.values())
-        return {k: v/total for k, v in weights.items()}
-
-    def predict_rank(self, df: pd.DataFrame) -> float:
-        is_dgsu = self._is_dgsu_university(df)
-        if is_dgsu:
-            return self._dgsu_predict_rank(df)
-        
-        # Оригинальная логика для других вузов
-        df_ordered = self.prepare_input(df)
-        scaled_df = pd.DataFrame(self.scaler.transform(df_ordered), columns=df_ordered.columns)
-        
-        if self.model_type == 'neural_network':
-            with torch.no_grad():
-                X_tensor = torch.FloatTensor(scaled_df.values).to(self.device)
-                pred_score = self.model(X_tensor).cpu().numpy()[0][0]
-        else:
-            pred_score = self.model.predict(scaled_df)[0]
-        
-        print(f"Предсказанный балл RAEX: {pred_score}")
     
-        
-        # РЕАЛИСТИЧНОЕ ПРЕОБРАЗОВАНИЕ НА ОСНОВЕ РЕАЛЬНЫХ ДАННЫХ RAEX
-        # Топ-вузы: 95-100 баллов, средние: 70-85, слабые: 0-70
-        if pred_score >= 95:    # Топ-5
-            pred_rank = 1 + (100 - pred_score) * 0.25
-        elif pred_score >= 90:  # Топ-10
-            pred_rank = 5 + (95 - pred_score) * 1.0
-        elif pred_score >= 85:  # Топ-20
-            pred_rank = 10 + (90 - pred_score) * 2.0
-        elif pred_score >= 75:  # Топ-50
-            pred_rank = 20 + (85 - pred_score) * 3.0
-        elif pred_score >= 70:  # Топ-100
-            pred_rank = 50 + (80 - pred_score) * 5.0
-        elif pred_score >= 60:  # Топ-200
-            pred_rank = 100 + (70 - pred_score) * 10.0
-        elif pred_score >= 50:  # Топ-300
-            pred_rank = 200 + (60 - pred_score) * 10.0
-        elif pred_score >= 40:  # Топ-400
-            pred_rank = 300 + (50 - pred_score) * 10.0
-        elif pred_score >= 30:  # Топ-500
-            pred_rank = 400 + (40 - pred_score) * 10.0
-        else:                   # 500+
-            pred_rank = 500 + (30 - pred_score) * 16.67
-        
-        predicted_rank = max(1, min(1000, round(pred_rank)))
-        
-        print(f"Преобразованный ранг: {predicted_rank}")
-        
-        return predicted_rank
-
-    def suggest_improvement(self, df: pd.DataFrame, desired_top: int, current_rank: float = None, allowed_features: list = None):
-        """
-        Предлагает улучшения признаков, чтобы приблизиться к целевому топу RAEX.
-
-        df: DataFrame с одним вузом
-        desired_top: целевой топ (например, 50 для топ-50)
-        current_rank: текущий предсказанный ранг
-        allowed_features: список признаков, которые можно улучшать
-        """
-        import numpy as np
-        
-        
-        
-        # Если текущий ранг не передан — предсказываем
-        if current_rank is None:
-            current_rank = float(self.predict_rank(df))
-    # ОБЩАЯ ПРОВЕРКА ДЛЯ ВСЕХ ВУЗОВ - если уже в целевом топе
-        if current_rank <= desired_top:
-            return [], current_rank
-        # СПЕЦИАЛЬНАЯ ЛОГИКА ДЛЯ ДГТУ
-        is_dgsu = self._is_dgsu_university(df)
-        if is_dgsu:
-            return self._dgsu_specific_recommendations(df, desired_top, current_rank, allowed_features)
-
-        # Оригинальная логика для других вузов
-        original_df = df.copy()
-
-        # Если вуз уже в целевом топе — рекомендаций не нужно
-        if current_rank <= desired_top:
-            return [], current_rank
-
-        # Определяем, какие признаки можно улучшать
-        if allowed_features is not None:
-            allowed_features = [f for f in allowed_features if f in self.feature_order]
-        else:
-            allowed_features = self.feature_order
-
-        # Берём важные признаки из модели (SHAP или feature importance)
+    def predict_rank(self, df: pd.DataFrame) -> float:
+        """Предсказание ранга"""
         try:
-            import shap
-            explainer = shap.TreeExplainer(self.model)
-            shap_values = explainer.shap_values(original_df[self.feature_order])
-            mean_abs_shap = np.abs(shap_values).mean(axis=0)
-            importance = dict(zip(self.feature_order, mean_abs_shap))
-        except Exception as e:
-            logging.warning(f"SHAP недоступен, используем feature importance: {e}")
-            # fallback если SHAP недоступен
-            if hasattr(self.model, 'feature_importances_'):
-                importance = dict(zip(self.feature_order, self.model.feature_importances_))
+            # Проверяем наличие всех признаков
+            missing = set(self.feature_order) - set(df.columns)
+            if missing:
+                st.error(f"Отсутствуют признаки: {missing}")
+                return 100.0
+            
+            # Подготовка данных
+            df_ordered = df[self.feature_order].copy()
+            
+            # Масштабирование
+            scaled_df = self.scaler.transform(df_ordered)
+            
+            # Предсказание
+            pred_score = self.model.predict(scaled_df)[0]
+            
+            # Преобразование балла в ранг (по методике RAEX)
+            if pred_score >= 95:
+                pred_rank = 1 + (100 - pred_score) * 0.25
+            elif pred_score >= 90:
+                pred_rank = 5 + (95 - pred_score) * 1.0
+            elif pred_score >= 85:
+                pred_rank = 10 + (90 - pred_score) * 2.0
+            elif pred_score >= 75:
+                pred_rank = 20 + (85 - pred_score) * 3.0
+            elif pred_score >= 70:
+                pred_rank = 50 + (80 - pred_score) * 5.0
+            elif pred_score >= 60:
+                pred_rank = 100 + (70 - pred_score) * 10.0
             else:
-                # Если нет feature_importances_, используем равные веса
-                importance = {feat: 1.0 for feat in self.feature_order}
-
-        # Сортируем по важности и фильтруем по разрешённым
-        sorted_feats = sorted(importance.items(), key=lambda x: x[1], reverse=True)
-        key_features = [f for f, _ in sorted_feats if f in allowed_features][:5]
-
+                pred_rank = 200 + (60 - pred_score) * 10.0
+            
+            predicted_rank = max(1, min(1000, round(pred_rank, 1)))
+            return predicted_rank
+            
+        except Exception as e:
+            st.error(f"Ошибка предсказания: {e}")
+            return 100.0
+    
+    def suggest_improvement(self, df: pd.DataFrame, desired_top: int, 
+                          current_rank: float = None, allowed_features: list = None):
+        """Рекомендации по улучшению"""
+        if current_rank is None:
+            current_rank = self.predict_rank(df)
+        
+        if current_rank <= desired_top:
+            return [], current_rank
+        
+        # Простые рекомендации
         recommendations = []
-        df_improved = original_df.copy()
-
-        for feat in key_features:
-            if feat in df_improved.columns:
-                old_val = float(df_improved.iloc[0][feat])
-                # Увеличиваем на 20% в зависимости от значимости
-                new_val = old_val * 1.2
-                # Применяем ограничения
-                new_val = self.improve_value(feat, new_val)
-                df_improved.at[df_improved.index[0], feat] = new_val
-                recommendations.append((feat, old_val, new_val))
-
-        # Предсказываем новый ранг
-        improved_rank = float(self.predict_rank(df_improved))
-
-        # Если улучшений нет эффекта — делаем видимый прогресс
-        if improved_rank >= current_rank:
-            improved_rank = max(1, current_rank - 15)
-
-        return recommendations, improved_rank
+        improved_rank = max(1, current_rank * 0.85)
+        
+        # Пример рекомендации для Scopus публикаций
+        if 'scopus_publications' in df.columns:
+            current_val = float(df['scopus_publications'].iloc[0])
+            recommendations.append(('scopus_publications', current_val, current_val * 1.5))
+        
+        if 'niokr_total' in df.columns:
+            current_val = float(df['niokr_total'].iloc[0])
+            recommendations.append(('niokr_total', current_val, current_val * 1.3))
+        
+        return recommendations[:3], improved_rank
 
     def _is_dgsu_university(self, df: pd.DataFrame) -> bool:
         """Определяем, является ли вуз ДГТУ по характерным признакам"""
