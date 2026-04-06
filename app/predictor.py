@@ -52,8 +52,6 @@ class RAPredictor:
                     model_files = os.listdir(path) if os.path.isdir(path) else []
                     if any(f.endswith(('.pkl', '.pth', '.joblib')) for f in model_files):
                         model_path = path
-                        st.info(f"✓ Найдена папка с моделями: {path}")
-                        st.info(f"   Файлы: {model_files[:5]}")  # Показываем первые 5 файлов
                         break
             except Exception as e:
                 logging.warning(f"Ошибка проверки пути {path}: {e}")
