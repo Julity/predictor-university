@@ -76,7 +76,7 @@ class RAPredictor:
                 self.feature_order = feature_order
             
             print(f"✅ Признаков: {len(self.feature_order)}")
-            st.success("✅ Все модели успешно загружены!")
+            
             
         except Exception as e:
             st.error(f"❌ Ошибка загрузки модели: {e}")
