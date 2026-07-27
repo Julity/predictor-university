@@ -49,8 +49,6 @@ class RAPredictor:
                 model_files = os.listdir(path)
                 if any(f.endswith(('.pkl', '.joblib')) for f in model_files):
                     model_path = path
-                    st.info(f"✓ Найдена папка с моделями: {path}")
-                    st.info(f"   Файлы: {model_files}")
                     break
         
         if model_path is None:
@@ -78,7 +76,7 @@ class RAPredictor:
                 self.feature_order = feature_order
             
             print(f"✅ Признаков: {len(self.feature_order)}")
-            st.success("✅ Все модели успешно загружены!")
+            
             
         except Exception as e:
             st.error(f"❌ Ошибка загрузки модели: {e}")

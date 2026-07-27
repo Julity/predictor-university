@@ -124,10 +124,10 @@ except ImportError as e:
         
     
 logging.basicConfig(level=logging.INFO)
-st.set_page_config(page_title="🎓 RANK FORECAST", layout="wide")
+st.set_page_config(page_title="🎓 Прогностическая модель", layout="wide")
 
 # 5. ПРОСТОЙ ИНТЕРФЕЙС ДО ЗАГРУЗКИ МОДЕЛЕЙ
-st.title("🎓 RANK FORECAST - Универсальная модель")
+st.title("🎓 Прогностическая модель управления академической конкурентоспособностью")
 
 
 
