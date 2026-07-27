@@ -262,6 +262,7 @@ with col2:
         st.session_state.csv_data = DONNTU_DATA
         st.session_state.use_csv = True
         st.session_state.university_loaded = "ДонНТУ"
+        st.session_state._force_dgsu = True
         st.session_state.form_key += 1  # Изменяем ключ формы
         st.success("✅ Данные ДонНТУ загружены!")
 

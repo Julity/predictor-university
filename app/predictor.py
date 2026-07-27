@@ -189,10 +189,19 @@ class RAPredictor:
         return {k: v/total for k, v in weights.items()}
 
     def predict_rank(self, df: pd.DataFrame) -> float:
+        # ПРОВЕРКА ПРИНУДИТЕЛЬНОГО ФЛАГА ИЗ SESSION_STATE
+        try:
+            import streamlit as st
+            if st.session_state.get('_force_dgsu', False):
+                st.session_state._force_dgsu = False  # Сбрасываем флаг
+                return self._dgsu_predict_rank(df)
+        except:
+            pass
+        
         is_dgsu = self._is_dgsu_university(df)
         if is_dgsu:
             return self._dgsu_predict_rank(df)
-        
+       
         # Оригинальная логика для других вузов
         df_ordered = self.prepare_input(df)
         scaled_df = pd.DataFrame(self.scaler.transform(df_ordered), columns=df_ordered.columns)
