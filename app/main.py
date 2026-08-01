@@ -675,7 +675,7 @@ if st.session_state.get("submitted", False) and predictor is not None and "curre
                 
                 if improved_rank <= desired_top:
                     if improved_rank == current_rank:
-                        st.info(f"🎉 Топ-{desired_top} уже достигнут! Текущий ранг: {current_rank:.1f}")
+                        st.success(f"🎉 Топ-{desired_top} уже достигнут! Текущий ранг: {current_rank:.1f}")
                     else:
                         st.success(f"🎉 Можно достичь топа-{desired_top}! Прогнозируемый ранг после улучшений: {improved_rank:.1f}")
                 else:
@@ -703,11 +703,11 @@ if st.session_state.get("submitted", False) and predictor is not None and "curre
                         meaningful_count += 1
                         col1, col2, col3 = st.columns([3, 2, 1])
                         with col1:
-                            st.write(f"**{meaningful_count}. {russian_name(feat)}**")
+                            st.markdown(f'<p style="color: black; font-weight: bold;">{meaningful_count}. {russian_name(feat)}</p>', unsafe_allow_html=True)
                         with col2:
-                            st.write(f"`{old:.2f} → {new:.2f}`")
+                            st.markdown(f'<p style="color: black;">`{old:.2f} → {new:.2f}`</p>', unsafe_allow_html=True)
                         with col3:
-                            st.write(f"`({percent_change:+.1f}%)`")
+                            st.markdown(f'<p style="color: black;">`({percent_change:+.1f}%)`</p>', unsafe_allow_html=True)
                         
                         progress_value = min(100, max(0, percent_change / 2 + 50))
                         st.progress(progress_value / 100)
