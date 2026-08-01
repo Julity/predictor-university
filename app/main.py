@@ -705,9 +705,9 @@ if st.session_state.get("submitted", False) and predictor is not None and "curre
                         with col1:
                             st.markdown(f'<p style="color: black; font-weight: bold;">{meaningful_count}. {russian_name(feat)}</p>', unsafe_allow_html=True)
                         with col2:
-                            st.markdown(f'<p style="color: black;">`{old:.2f} → {new:.2f}`</p>', unsafe_allow_html=True)
+                            st.markdown(f'<p style="color: black;font-size: 14px;">{old:.2f} → {new:.2f}</p>', unsafe_allow_html=True)
                         with col3:
-                            st.markdown(f'<p style="color: black;">`({percent_change:+.1f}%)`</p>', unsafe_allow_html=True)
+                            st.markdown(f'<p style="color: black;font-size: 14px;">({percent_change:+.1f}%)</p>', unsafe_allow_html=True)
                         
                         progress_value = min(100, max(0, percent_change / 2 + 50))
                         st.progress(progress_value / 100)
