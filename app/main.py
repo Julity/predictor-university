@@ -675,7 +675,7 @@ if st.session_state.get("submitted", False) and predictor is not None and "curre
                 
                 if improved_rank <= desired_top:
                     if improved_rank == current_rank:
-                        st.success(f"🎉 Топ-{desired_top} уже достигнут! Текущий ранг: {current_rank:.1f}")
+                        st.info(f"🎉 Топ-{desired_top} уже достигнут! Текущий ранг: {current_rank:.1f}")
                     else:
                         st.success(f"🎉 Можно достичь топа-{desired_top}! Прогнозируемый ранг после улучшений: {improved_rank:.1f}")
                 else:
